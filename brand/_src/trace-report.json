@@ -1,0 +1,70 @@
+[
+ {
+  "name": "wz-monogram.svg",
+  "label": "WZ 主徽标",
+  "viewBox": [
+   726,
+   329
+  ],
+  "offset": [
+   268.0,
+   296.5
+  ],
+  "rings": 11,
+  "nodes": 2075,
+  "kb": 19.6,
+  "iou": 97.2,
+  "fill": "#232527"
+ },
+ {
+  "name": "wz-monogram-accent.svg",
+  "label": "WZ 强调色",
+  "viewBox": [
+   484,
+   204
+  ],
+  "offset": [
+   507.0,
+   309.5
+  ],
+  "rings": 5,
+  "nodes": 438,
+  "kb": 4.1,
+  "iou": 95.9,
+  "fill": "#F5CE15"
+ },
+ {
+  "name": "wordmark.svg",
+  "label": "字标",
+  "viewBox": [
+   786,
+   138
+  ],
+  "offset": [
+   233.0,
+   743.0
+  ],
+  "rings": 12,
+  "nodes": 1248,
+  "kb": 9.7,
+  "iou": 97.4,
+  "fill": "#232527"
+ },
+ {
+  "name": "wordmark-accent.svg",
+  "label": "字标强调",
+  "viewBox": [
+   36,
+   34
+  ],
+  "offset": [
+   266.0,
+   741.5
+  ],
+  "rings": 1,
+  "nodes": 64,
+  "kb": 0.6,
+  "iou": 93.4,
+  "fill": "#F5CE15"
+ }
+]

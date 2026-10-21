@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  WANGZIYI MAIL · 桌面端登录页
+  ----------------------------------------------------------------------------
+  对应稿子：design/01-login-desktop.png
+  写代码依据：design/DESIGN-STANDARDS.md 第 4.1b 节（第五轮目标色板）
+
+  【尺寸不是估的，是从稿子像素里量出来的】
+  稿子 = 1440 × 900。以下全部是 1x 实测值：
+    页眉高 64 ｜ 页脚高 64 ｜ 左右内边距 32
+    分栏线 x = 880  →  左右两栏 880 : 560 = 11 : 7
+    左栏内容左边界 x = 80
+    卡片盒 x 950–1369 / y 198–702  →  419 × 504，内边距 34
+    输入框高 46 ｜ 按钮高 48 ｜ 复选框 14×14
+    正文字号 14 / 行高 26
+
+  【三条贯穿全页的规则，别破坏】
+    R1  信号黄 #fff500 只允许出现在四个位置：按钮 / 悬停 / 选中行 / 焦点环与光标。
+        其余任何地方用黄，都是把警戒色当油漆。
+    R2  数字一律 tabular-nums，否则未读数、时间戳一变宽度就抖。
+    R3  圆角分两段：先全部清零，再单独恢复"本来就圆的"（状态点、头像）。
+        不是"全直角"，也不是"全圆角"。
+  ============================================================================
+-->
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <!-- 手机上不要按 980px 虚拟宽缩小渲染。这一行不加，手机端等于白做 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录 · WANGZIYI MAIL</title>
+
+  <!--
+    字体：两个族，分工不重叠 —— 这是稿子的设定，不是我挑的。
+      Saira Condensed → 拉丁大标题、数字、时间戳、"仪器面板标签"
+      Noto Sans SC    → 中文（思源黑体的 Google 发行版，同一设计）
+
+    【为什么不用 Google Fonts 外链】
+    ① webmail 不该为了显示自己的界面去 ping 第三方 CDN —— 速度、隐私、可用性三输
+    ② 断网/被墙时页面直接掉字体，而且不报错，只是"看着不太对"
+    所以 Saira Condensed 直接自托管：fonts/ 下 4 个 woff2，共 71KB，只取 latin 子集。
+    中文体积大（几 MB），这里用本机字体兜底 —— 部署到线上时再按需自托管 CJK 子集。
+  -->
+  <style>
+    /* ---- 自托管字体：Saira Condensed（latin 子集，4 个字重）----
+       font-display: swap → 字体没到之前先用兜底字体显示，不让页面白屏 */
+    @font-face { font-family: "Saira Condensed"; font-style: normal; font-weight: 400; font-display: swap;
+                 src: url("fonts/saira-condensed-400.woff2") format("woff2"); }
+    @font-face { font-family: "Saira Condensed"; font-style: normal; font-weight: 500; font-display: swap;
+                 src: url("fonts/saira-condensed-500.woff2") format("woff2"); }
+    @font-face { font-family: "Saira Condensed"; font-style: normal; font-weight: 700; font-display: swap;
+                 src: url("fonts/saira-condensed-700.woff2") format("woff2"); }
+    @font-face { font-family: "Saira Condensed"; font-style: normal; font-weight: 900; font-display: swap;
+                 src: url("fonts/saira-condensed-900.woff2") format("woff2"); }
+
+    /* ========================================================================
+       ① 设计令牌 —— 所有颜色/间距只定义一次，下面全用 var() 引用
+       换配色只改这一段。这就是"设计系统"和"手写 CSS"的分界线。
+       ======================================================================== */
+    :root {
+      /* ---- 纸阶：B ≤ R < G，差值只有 1~3 ----
+         刻意留一点暖意：纯中性灰（R=G=B）在暗色界面里会显得"死黑"。
+         差值再大就会发绿发黄 —— 上一版就是栽在这里。 */
+      --bg-base:   #101110;  /* 应用底 */
+      --bg-panel:  #181a18;  /* 卡片 / 面板 */
+      --bg-inset:  #0f100f;  /* 输入框内部：比底更暗 = 视觉内凹 */
+
+      /* ---- 墨阶：正文不用纯白，纯白压满屏会"发光" ---- */
+      --text-1: #f5f5f0;     /* 标题 / 正文（暖白） */
+      --text-2: #898d89;     /* 次要：标签、说明、页脚（5.6:1，过 AA） */
+
+      /* ---- 信号色：全站唯一 ---- */
+      --accent:       #fff500;
+      --accent-hover: #e8e000;
+      --on-accent:    #0a0c0c;  /* 黄底上压墨字 —— 别用白 */
+
+      /* ---- 语义状态色：独立于信号色，换配色时不动 ---- */
+      --danger: #ff6b61;  --success: #4fbf5c;  --warning: #ffb700;
+
+      /* ---- 结构线：实色灰，不用 rgba(255,255,255,.09) ----
+         半透明白压在暖调纸底上会发蓝发脏，跟色系打架。 */
+      --line-l1: #343633;  /* 细线 */
+      --line-l2: #4a4d49;  /* 重线 */
+
+      /* ---- 字体栈 ---- */
+      --font-cn:      "Source Han Sans CN", "Noto Sans SC", "Microsoft YaHei", system-ui, sans-serif;
+      --font-display: "Saira Condensed", var(--font-cn);
+    }
+
+    /* ========================================================================
+       ② 重置 + 基底
+       ======================================================================== */
+
+    /* R3 第一段：全局清零圆角。
+       工业感的一大半来自"全直角"，圆角会把观感拉回消费级 App。
+       后面单独覆盖需要圆的元素。 */
+    * { margin: 0; padding: 0; box-sizing: border-box; border-radius: 0; }
+
+    html, body { height: 100%; }
+
+    body {
+      background: var(--bg-base);
+      color: var(--text-1);
+      font-family: var(--font-cn);
+      font-weight: 400;
+      font-size: 13px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;  /* 暗色界面关掉默认平滑，否则细字发虚 */
+    }
+
+    /* R2 数字等宽：这些位置的数字会变（未读数、时间），
+       不用 tnum 的话一变就左右抖。 */
+    .data, time, .count, .id, .addr, .stat-value {
+      font-family: var(--font-display);
+      font-variant-numeric: tabular-nums;
+      font-feature-settings: "tnum" 1;
+    }
+
+    /* 拉丁小标签的统一规格：大写 + 字距 + 仪器字 */
+    .label-en {
+      font-family: var(--font-display);
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+
+    /* ========================================================================
+       ③ 版式骨架
+       ======================================================================== */
+    .app {
+      height: 100%;
+      min-height: 700px;
+      display: grid;
+      grid-template-rows: auto 1fr auto;   /* 页眉 / 主区 / 页脚 */
+    }
+
+    /* ---- 页眉：实测高 64，左右内边距 32 ---- */
+    .head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px;
+      height: 65px;                 /* 实测：底线在 y=64 */
+      padding: 0 32px;
+      border-bottom: 1px solid var(--line-l1);
+    }
+    .head__group { display: flex; align-items: center; gap: 12px; }
+
+    /* Logo：唯一的"实心黄块"（28×28）。全页最大的黄面积就是它 */
+    .logo {
+      width: 28px; height: 28px; flex: none;
+      background: var(--accent);
+      display: grid; place-items: center;
+    }
+    .brand {
+      font-family: var(--font-display);
+      font-size: 13px; font-weight: 700;
+      letter-spacing: 1.5px; text-transform: uppercase;
+    }
+    /* 页眉里的竖向分隔线：1px 宽、12px 高，靠"细而短"撑出结构感 */
+    .vrule { width: 1px; height: 12px; background: var(--line-l2); flex: none; }
+    .head__ver { font-size: 11px; color: var(--text-2); }
+
+    /* 状态点：R3 第二段 —— 这里恢复成圆的。
+       "形状本身就是圆的"（状态灯、头像）和"方块被磨圆"是两回事。 */
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: none; }
+    .head__item { font-size: 11px; letter-spacing: 1.2px; text-transform: uppercase; color: var(--text-2); }
+    .head__item--on { color: var(--text-1); }
+    /* 页眉右组间距 20px（实测 21） */
+    .head__right { display: flex; align-items: center; gap: 20px; }
+    .head__status { display: flex; align-items: center; gap: 8px; }
+    /* 页眉右侧全是拉丁标签 —— 必须显式声明字体族。
+       漏了这一行，它会继承 body 的中文字体栈，
+       拉丁字形当场换掉（而且不报错、只是"看着不太对"）。 */
+    .head__item { font-family: var(--font-display); }
+
+    /* ---- 主区：11 : 7 两栏（实测 880 : 560），中间一条结构线 ---- */
+    .main {
+      display: grid;
+      grid-template-columns: 11fr 7fr;
+      align-items: center;   /* 两栏各自垂直居中 */
+      overflow: hidden;
+    }
+    /* 这条 1px 从左栏的 border 上"长出来"，
+       不额外加 DOM 节点 —— 少一个节点，也不会因布局错位 */
+    .main > :last-child { border-left: 1px solid var(--line-l1); height: 100%; }
+
+    /* ========================================================================
+       ④ 左栏：品牌区（内容左边界 80px，正文宽 500px）
+       ======================================================================== */
+    .hero { padding: 40px 48px 40px 80px; max-width: 720px; }
+
+    .eyebrow {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-display);   /* 稿子实测：Saira Condensed Medium */
+      font-weight: 500;
+      color: var(--text-2);
+      font-size: 11px; letter-spacing: 2.6px;
+      text-transform: uppercase;          /* 稿子是大写；漏了这行会渲染成混合大小写 */
+      margin-bottom: 28px;
+    }
+    /* 小方标：6×6 黄方块 —— 信号色的"最小合法单位" */
+    .tick { width: 6px; height: 6px; background: var(--accent); flex: none; }
+
+    /* 主标题：稿子实测 —— Saira Condensed Black 54px / 行高 60 / 字距 −1px。
+       负字距是大标题的关键：不收会显得松垮。 */
+    h1 {
+      font-family: var(--font-display);
+      font-size: 54px;
+      font-weight: 900;
+      line-height: 60px;
+      letter-spacing: -1px;
+      text-transform: uppercase;
+    }
+    /* 副标题走信号黄 —— 它是品牌标识的一部分，属于"标识位置"，不是滥用 */
+    .hero__sub {
+      margin-top: 12px;
+      font-family: var(--font-cn);
+      font-size: 13px; font-weight: 500;
+      letter-spacing: 5px;
+      color: var(--accent);
+    }
+    .hero__desc {
+      margin-top: 22px;
+      max-width: 528px;          /* 卡在"端到端"能排下、再放"TLS"就换行之间 */
+      font-size: 14px; line-height: 26px;
+      color: var(--text-2);
+    }
+
+    /* 分隔线：靠 margin 撑开，不用 <hr> 的默认样式 */
+    .hrule { height: 1px; background: var(--line-l1); margin: 34px 0 32px; }
+
+    /* 三个统计读数 */
+    .stats { display: flex; gap: 56px; }
+    .stat-value { font-family: var(--font-display); font-size: 26px; font-weight: 700; line-height: 1.1; }   /* 大数字用正文色，不用黄 */
+    .stat-key {
+      margin-top: 12px;                  /* 实测：数值底 → 标签顶 12px */
+      font-family: var(--font-display);
+      font-size: 10px; letter-spacing: 1.4px;
+      color: var(--text-2); text-transform: uppercase;
+    }
+
+    /* ========================================================================
+       ⑤ 右栏：登录卡片（419 × 504，内边距 34）
+       ======================================================================== */
+    .auth-wrap { display: grid; place-items: center; height: 100%; padding: 32px; }
+
+    .auth {
+      width: 100%; max-width: 419px;
+      background: var(--bg-panel);
+      border: 1px solid var(--line-l1);
+      padding: 34px;
+    }
+
+    .auth__head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .auth__tag {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--font-display);
+      font-weight: 500;
+      font-size: 11px; letter-spacing: 2.6px; text-transform: uppercase;
+      color: var(--text-2);
+    }
+    .auth__index { font-size: 11px; letter-spacing: 2px; color: var(--text-2); }
+
+    /* 卡片标题：稿子实测 —— 思源黑 Heavy 26px / 字距 −0.5px */
+    .auth__title { font-size: 26px; font-weight: 900; letter-spacing: -.5px; line-height: 1.2; }
+    .auth__sub { margin-top: 12px; font-size: 13px; color: var(--text-2); }
+
+    .field { margin-top: 22px; }
+    .field__label {
+      display: block; margin-bottom: 8px;
+      font-family: var(--font-display);
+      font-size: 10px; letter-spacing: 1.6px; text-transform: uppercase;
+      color: var(--text-2);
+    }
+
+    /* 输入框：内凹 = 填色比卡片更暗，加 1px 细线做边界。
+       识别主要靠"标签在正上方" + 焦点态的纯黄环 ——
+       边界线本身对比度只有 1.4:1，这是主动接受的偏离，
+       见 DESIGN-STANDARDS 3.2 问题 4。 */
+    .input {
+      width: 100%; height: 46px;
+      padding: 0 12px;
+      background: var(--bg-inset);
+      border: 1px solid var(--line-l1);
+      color: var(--text-1);
+      font-family: var(--font-display);
+      font-size: 13px;
+      outline: none;
+    }
+    .input::placeholder { color: var(--text-2); }
+    /* 密码点：字距拉开一点，否则圆点挤成一坨 */
+    .input--secret { letter-spacing: 3px; }
+
+    .auth__row {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 22px;
+    }
+    .check { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; }
+
+    /* 自定义复选框：原生 checkbox 无法改成方正的黄块，
+       所以用 appearance:none 清掉原生外观自己画。
+       这是"想完全控制外观就得接管原生控件"的典型例子。 */
+    .check input {
+      appearance: none; -webkit-appearance: none;
+      width: 14px; height: 14px; flex: none;
+      border: 1px solid var(--line-l2);
+      background: var(--bg-inset);
+      cursor: pointer;
+      position: relative;
+    }
+    .check input:checked { background: var(--accent); border-color: var(--accent); }
+    /* 对勾用两条边框旋 45° 拼出来，不引图标库 */
+    .check input:checked::after {
+      content: ""; position: absolute; left: 4px; top: 1px;
+      width: 4px; height: 8px;
+      border: solid var(--on-accent); border-width: 0 2px 2px 0;
+      transform: rotate(45deg);
+    }
+
+    .link { color: var(--accent); text-decoration: none; font-size: 12px; }
+    .link:hover { color: var(--accent-hover); text-decoration: underline; }
+
+    /* 主按钮：黄描边 + 黄字 + 墨底 —— 信号色四个合法落点里的第①个 */
+    .btn {
+      width: 100%; height: 48px;
+      margin-top: 22px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      font-family: var(--font-cn);
+      font-size: 14px; font-weight: 700; letter-spacing: 1px;
+      cursor: pointer;
+      transition: background-color .12s linear, color .12s linear;
+    }
+    /* 落点②：悬停 —— 填充反转。这是全页最"响"的一下，所以只给这一个元素 */
+    .btn:hover { background: var(--accent); color: var(--on-accent); }
+    .btn:active { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+    .auth__fine { margin-top: 22px; text-align: center; font-size: 11px; color: var(--text-2); }
+
+    /* ---- 页脚：实测高 64，组内间距 28 ---- */
+    .foot {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; height: 64px; padding: 0 32px;
+      border-top: 1px solid var(--line-l1);
+      font-family: var(--font-display);
+      font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--text-2);
+    }
+    .foot__group { display: flex; align-items: center; gap: 28px; }
+
+    /* ========================================================================
+       ⑥ 状态层：焦点 / 选中 / 动效偏好
+       ======================================================================== */
+    /* 落点④：焦点环。
+       WCAG 1.4.11 要求键盘焦点可见且对比度 ≥3:1 —— 所以
+       :focus-visible 只准加，不准删。网上大量 `outline:none` 是错的。 */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+    /* 鼠标点不显示焦点环、键盘 Tab 才显示 —— 这就是 :focus-visible 和 :focus 的差别 */
+    .btn:focus:not(:focus-visible) { outline: none; }
+
+    ::selection { background: var(--accent); color: #000; }
+    input, textarea { caret-color: var(--accent); }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: .01ms !important;
+        transition-duration: .01ms !important;
+      }
+    }
+
+    /* ========================================================================
+       ⑦ 响应式：窄屏塌成单列
+       这一份是桌面版；手机版另有专门稿（03-login-mobile.png）。
+       这里只保证"不烂"，不等于手机版实现。
+       ======================================================================== */
+    @media (max-width: 1000px) {
+      .app { height: auto; min-height: 0; }
+      .main { grid-template-columns: 1fr; }
+      .main > :last-child { border-left: none; border-top: 1px solid var(--line-l1); }
+      .hero { padding: 48px 32px; max-width: none; }
+      .auth-wrap { padding: 48px 32px; }
+      h1 { font-size: 40px; line-height: 44px; }
+      .head__ver, .head__item--meta { display: none; }  /* 窄屏优先保品牌和状态 */
+      .foot { flex-direction: column; gap: 8px; height: auto; padding: 16px 32px; }
+      .foot__group { gap: 16px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <!-- ===================== 页眉 ===================== -->
+    <header class="head">
+      <div class="head__group">
+        <!-- 信封 Logo：内联 SVG，不引图标库。stroke 用墨色压在黄底上 -->
+        <div class="logo" aria-hidden="true">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+            <rect x="0.5" y="2.5" width="13" height="9" stroke="#0a0c0c" stroke-width="1.2"/>
+            <path d="M1 3.2 7 7.6 13 3.2" stroke="#0a0c0c" stroke-width="1.2"/>
+          </svg>
+        </div>
+        <span class="brand">Wangziyi Mail</span>
+        <span class="vrule" aria-hidden="true"></span>
+        <span class="head__ver">邮件终端 v1.6.6</span>
+      </div>
+
+      <div class="head__right">
+        <span class="head__status">
+          <span class="dot" aria-hidden="true"></span>
+          <span class="head__item head__item--on">Online</span>
+        </span>
+        <span class="head__item head__item--meta">TLS 1.3</span>
+        <!-- class="data" 走等宽数字：秒数跳动时宽度不变，行不会左右晃 -->
+        <time class="head__item head__item--meta data" datetime="2026-10-15T20:15">2026-10-15 20:15</time>
+      </div>
+    </header>
+
+    <!-- ===================== 主区 ===================== -->
+    <main class="main">
+
+      <!-- ---------- 左：品牌栏 ---------- -->
+      <section class="hero">
+        <p class="eyebrow">
+          <span class="tick" aria-hidden="true"></span>
+          Secure Mail Terminal
+        </p>
+
+        <h1>Wangziyi Mail</h1>
+
+        <p class="hero__sub">邮件终端 · MAIL TERMINAL</p>
+
+        <p class="hero__desc">
+          自建 Postfix + Dovecot 私有邮件系统。邮件经 Cloudflare 加密回源，
+          端到端 TLS 传输，不经过任何第三方邮件服务商。
+        </p>
+
+        <div class="hrule" aria-hidden="true"></div>
+
+        <div class="stats">
+          <div>
+            <div class="stat-value">12</div>
+            <div class="stat-key">Unread · 未读</div>
+          </div>
+          <div>
+            <div class="stat-value">1,284</div>
+            <div class="stat-key">Messages · 邮件</div>
+          </div>
+          <div>
+            <div class="stat-value">AES-256</div>
+            <div class="stat-key">Encryption · 加密</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ---------- 右：登录卡片 ---------- -->
+      <div class="auth-wrap">
+        <!-- 用 <form> 不用 <div>：回车能提交、浏览器能记密码 —— 语义标签自带行为 -->
+        <form class="auth" action="#" method="post">
+          <div class="auth__head">
+            <span class="auth__tag">
+              <span class="tick" aria-hidden="true"></span>
+              Authentication
+            </span>
+            <span class="auth__index data">01</span>
+          </div>
+
+          <h2 class="auth__title">登录</h2>
+          <p class="auth__sub">使用邮箱账号进入邮件终端</p>
+
+          <!-- label 的 for 必须对上 input 的 id：
+               点文字能聚焦输入框，读屏软件也能念出字段名。
+               只拿 placeholder 当标签是常见错误 —— 一开始打字它就没了。 -->
+          <div class="field">
+            <label class="field__label" for="email">邮箱地址 · EMAIL</label>
+            <input class="input" id="email" name="email" type="email"
+                   autocomplete="username" inputmode="email" required
+                   placeholder="name@example.com" value="me@wangziyi12939.top">
+          </div>
+
+          <div class="field">
+            <label class="field__label" for="password">密码 · PASSWORD</label>
+            <input class="input input--secret" id="password" name="password" type="password"
+                   autocomplete="current-password" required placeholder="··············">
+          </div>
+
+          <div class="auth__row">
+            <label class="check">
+              <input type="checkbox" name="remember" checked>
+              <span>记住我</span>
+            </label>
+            <a class="link" href="#">忘记密码？</a>
+          </div>
+
+          <button class="btn" type="submit">
+            进入邮箱
+            <svg width="14" height="10" viewBox="0 0 14 10" fill="none" aria-hidden="true">
+              <path d="M0 5h12M8.5 1.5 12 5l-3.5 3.5" stroke="currentColor" stroke-width="1.6"/>
+            </svg>
+          </button>
+
+          <p class="auth__fine">仅限授权用户 · 所有登录行为均被记录</p>
+        </form>
+      </div>
+
+    </main>
+
+    <!-- ===================== 页脚 ===================== -->
+    <footer class="foot">
+      <div class="foot__group">
+        <span>IMAP · 993 SSL</span>
+        <span>SMTP · 587 TLS</span>
+        <span>STORAGE · 2.4 GB / 10 GB</span>
+      </div>
+      <span>2026 Wangziyi · All Rights Reserved</span>
+    </footer>
+
+  </div>
+</body>
+</html>
